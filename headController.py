@@ -1,9 +1,12 @@
 
+
 import almath
 import time
 import argparse
 import socket
 import math
+import thread
+
 from contextlib import closing
 from naoqi import ALProxy
 
@@ -11,6 +14,8 @@ from naoqi import ALProxy
 bufsize = 2048
 PORT_CONST_HEAD_Action = 41000
 AVG_WINDOW_SIZE=10
+yaw=0
+pitch=0
 
 def clamp(n, smallest, largest): return max(smallest, min(n, largest))
 
@@ -30,27 +35,42 @@ class MovingAverage:
                 self.average=self.average/len(self.data)
                 return self.average
 
-def main(robotIP, PORT = 9559):
-    motion = ALProxy("ALMotion", robotIP, PORT)
-    motion.setStiffnesses("Head", 1.0)
-    #motion.setAngles(["HeadYaw"],1.0,1.0);
+				
+def DataReceiver():
+    global yaw
+    global pitch
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    avgYaw=MovingAverage(AVG_WINDOW_SIZE)
-    avgPitch=MovingAverage(AVG_WINDOW_SIZE)
     with closing(sock):
          sock.bind(("", PORT_CONST_HEAD_Action))
          while True:
              msg = sock.recv(bufsize)
-             #print("************************* Head:"+msg)
-             pitch=-math.radians(float(msg.split(",")[1]))
-             yaw  =math.radians(float(msg.split(",")[0]))
-             pitch=clamp(pitch,-math.pi,math.pi)
-             yaw  =clamp(yaw,-math.pi,math.pi)
-#            yaw=avgYaw.add(yaw)
-#            pitch=avgPitch.add(pitch)
-#             print(str(pitch) + " .. " + str(yaw))
-             motion.setAngles(["HeadYaw", "HeadPitch"], [yaw,pitch], 0.3)
+#             print msg
+             pitch1=-math.radians(float(msg.split(",")[1]))
+             yaw1  =math.radians(float(msg.split(",")[0]))
+             yaw  =clamp(yaw1,-math.pi,math.pi)
+             pitch=clamp(pitch1,-math.pi,math.pi)
+#            print(str(yaw)+","+str(pitch))
+
+
+
+def main(robotIP, PORT = 9559):
+    global yaw
+    global pitch
+    thread.start_new_thread(DataReceiver,())
+    motion = ALProxy("ALMotion", robotIP, PORT)
+    motion.setStiffnesses("Head", 1.0)
+    #motion.setAngles(["HeadYaw"],1.0,1.0);
+    avgYaw=MovingAverage(AVG_WINDOW_SIZE)
+    avgPitch=MovingAverage(AVG_WINDOW_SIZE)
+    while True:
+        #print("************************* Head:"+msg)
+        yaw2=avgYaw.add(yaw)
+        pitch2=avgPitch.add(pitch)
+#        print(str(pitch2) + " .. " + str(yaw2))
+        motion.setAngles(["HeadYaw", "HeadPitch"], [yaw2,pitch2], 0.5)
+        time.sleep(0.01)
+
 
 
 if __name__ == "__main__":
