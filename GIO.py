@@ -11,6 +11,7 @@ from naoqi import ALProxy
 from subprocess import call
 
 robotIP="127.0.0.1"
+volume=100
 
 def HeadProcessing():
    headController.main(robotIP,9559)
@@ -32,6 +33,8 @@ def main(targetIP):
    # auton.setBackgroundStrategy("none")
   #  vision=ALProxy("ALVideoDevice",robotIP,9559)
   #  vision.stopCamera(0)
+    tts=ALProxy("ALTextToSpeech",robotIP,9559)
+    tts.say("Now on I will become an Avatar!")
     auton=ALProxy("ALAutonomousLife",robotIP,9559)
     print auton.getState()
     if auton.getState()!='disabled':
@@ -42,7 +45,7 @@ def main(targetIP):
     awareness=ALProxy("ALBasicAwareness",robotIP,9559)
     awareness.stopAwareness()
     audio=ALProxy("ALAudioDevice",robotIP,9559)
-    audio.setOutputVolume(100)
+    audio.setOutputVolume(volume)
 
 #    time.sleep(5)
 #    subprocess.Popen(["python","headController.py"])
